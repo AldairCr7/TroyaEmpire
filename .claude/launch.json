@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "troya",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["serve_troya.py"],
+      "port": 8123
+    }
+  ]
+}

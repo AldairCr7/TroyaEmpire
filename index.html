@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Guerra de Troya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=Figtree:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="main.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">Ω</span>
+        <div>
+          <h1>Guerra de Troya</h1>
+          <p id="scenario-name" class="scenario-name">—</p>
+        </div>
+      </div>
+
+      <div class="turn-info">
+        <span id="turn-chip" class="turn-chip">Turno 1</span>
+        <span id="era-chip" class="era-chip">Era 1 · Campamento</span>
+        <span id="house-chip" class="house-chip" hidden></span>
+        <span id="limit-chip" class="limit-chip" hidden></span>
+      </div>
+
+      <div class="resources" aria-label="Recursos">
+        <span class="res" title="Grano"><i class="ico ico-grain" aria-hidden="true"></i><b id="res-grain">0</b><small id="inc-grain">+0</small></span>
+        <span class="res" title="Bronce"><i class="ico ico-bronze" aria-hidden="true"></i><b id="res-bronze">0</b><small id="inc-bronze">+0</small></span>
+        <span class="res" title="Población"><i class="ico ico-pop" aria-hidden="true"></i><b id="res-pop">0</b><small id="pop-cap">/30</small></span>
+      </div>
+
+      <nav class="top-actions">
+        <button id="btn-pause" class="btn primary" type="button" title="Menú del día">Menú <kbd id="kb-pause">W</kbd></button>
+      </nav>
+    </header>
+
+    <main class="stage">
+      <section class="board-wrap">
+        <canvas id="board" class="board" aria-label="Mapa de batalla"></canvas>
+        <div id="action-menu" class="action-menu" hidden role="menu" aria-label="Órdenes"></div>
+        <div id="forecast" class="forecast" hidden></div>
+        <div id="tile-info" class="tile-info" hidden></div>
+        <div id="toast" class="toast" hidden></div>
+        <div id="ai-indicator" class="ai-indicator" hidden><span class="spinner"></span> El ordenador está moviendo… <button id="btn-speed" class="btn tiny" type="button">Acelerar</button></div>
+      </section>
+
+      <aside class="side">
+        <section id="selection" class="card selection"></section>
+      </aside>
+    </main>
+  </div>
+
+  <!-- ============ Nueva partida ============ -->
+  <dialog id="setup" class="modal setup">
+    <form method="dialog" id="setup-form">
+      <header class="modal-head">
+        <span class="brand-mark big" aria-hidden="true">Ω</span>
+        <div>
+          <h2>Guerra de Troya</h2>
+          <p class="muted">Estrategia por turnos al estilo de <em>Age of Empires: The Age of Kings</em> de DS.</p>
+        </div>
+      </header>
+
+      <div class="setup-grid">
+        <div>
+          <h3 class="label">Escenario</h3>
+          <div id="scenario-list" class="scenario-list"></div>
+        </div>
+        <div class="setup-right">
+          <div class="preview-wrap">
+            <canvas id="preview" width="360" height="250" aria-label="Vista previa del mapa"></canvas>
+            <p id="preview-desc" class="muted small"></p>
+          </div>
+
+          <div class="field">
+            <span class="label">Tamaño</span>
+            <div class="seg" id="size-seg">
+              <label><input type="radio" name="size" value="small"><span>Pequeño</span></label>
+              <label><input type="radio" name="size" value="medium" checked><span>Mediano</span></label>
+              <label><input type="radio" name="size" value="large"><span>Grande</span></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Tu bando</span>
+            <div class="seg" id="faction-seg">
+              <label><input type="radio" name="faction" value="greek" checked><span>Aqueos</span></label>
+              <label><input type="radio" name="faction" value="trojan"><span>Troyanos</span></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Casa</span>
+            <div class="seg wrap" id="house-seg"></div>
+            <p id="house-desc" class="muted small house-desc"></p>
+          </div>
+
+          <div class="field">
+            <span class="label">Rival</span>
+            <div class="seg wrap" id="mode-seg">
+              <label><input type="radio" name="mode" value="easy"><span>IA fácil</span></label>
+              <label><input type="radio" name="mode" value="normal" checked><span>IA normal</span></label>
+              <label><input type="radio" name="mode" value="hard"><span>IA difícil</span></label>
+              <label><input type="radio" name="mode" value="hotseat"><span>2 jugadores</span></label>
+              <label><input type="radio" name="mode" value="watch"><span>IA contra IA</span></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Controles</span>
+            <div class="seg" id="setup-controls-seg">
+              <label><input type="radio" name="controls" value="flechas" checked><span>Flechitas</span></label>
+              <label><input type="radio" name="controls" value="wasd"><span>WASD</span></label>
+            </div>
+            <p id="controls-desc" class="muted small"></p>
+          </div>
+
+          <div class="field row">
+            <label class="check"><input type="checkbox" id="fog" checked> Niebla de guerra</label>
+            <label class="check"><input type="checkbox" id="fast"> Animaciones rápidas</label>
+          </div>
+
+          <div class="field">
+            <label class="label" for="seed">Semilla del mapa</label>
+            <div class="seed-row">
+              <input id="seed" type="text" maxlength="24" autocomplete="off" spellcheck="false">
+              <button id="reroll" class="btn ghost" type="button" title="Otro mapa">Otro mapa</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-foot">
+        <button id="btn-howto" class="btn ghost" type="button">Cómo se juega</button>
+        <button id="btn-campaign" class="btn ghost" type="button">Campaña</button>
+        <button id="btn-start" class="btn primary big" type="submit" value="start">Comenzar la guerra</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- ============ Mapa de la región ============ -->
+  <dialog id="map" class="modal map-modal">
+    <header class="modal-head">
+      <div>
+        <h2>Mapa de la región</h2>
+        <p class="muted">Toca cualquier punto para llevar la vista hasta allí.</p>
+      </div>
+      <button class="btn ghost icon close" type="button" data-close title="Cerrar">✕</button>
+    </header>
+    <div class="map-body">
+      <canvas id="minimap" width="560" height="390" aria-label="Minimapa"></canvas>
+    </div>
+  </dialog>
+
+  <!-- ============ Menú del día (pausa) ============ -->
+  <dialog id="pause" class="modal pause">
+    <header class="modal-head">
+      <span class="brand-mark big" aria-hidden="true">Ω</span>
+      <div>
+        <h2>Menú</h2>
+        <p id="pause-sub" class="muted">—</p>
+      </div>
+      <button class="btn ghost icon close" type="button" data-close title="Cerrar">✕</button>
+    </header>
+    <div class="pause-grid">
+      <div class="pause-col">
+        <section id="objectives" class="card objectives"></section>
+        <section class="card log-card">
+          <h3>Crónica</h3>
+          <ol id="log" class="log"></ol>
+        </section>
+        <section class="card sonido-card">
+          <h3>Sonido</h3>
+          <label class="check"><input type="checkbox" id="snd-mudo"> Silencio</label>
+          <div class="mezcla">
+            <label><span>Maestro</span><input type="range" id="snd-maestro" min="0" max="1" step="0.05"><i id="snd-n-maestro">—</i></label>
+            <label><span>Efectos</span><input type="range" id="snd-efectos" min="0" max="1" step="0.05"><i id="snd-n-efectos">—</i></label>
+            <label><span>Música</span><input type="range" id="snd-musica" min="0" max="1" step="0.05"><i id="snd-n-musica">—</i></label>
+          </div>
+        </section>
+        <section class="card keys-card">
+          <h3>Controles</h3>
+          <div class="seg" id="controls-seg">
+            <label><input type="radio" name="controls-live" value="flechas"><span>Flechitas</span></label>
+            <label><input type="radio" name="controls-live" value="wasd"><span>WASD</span></label>
+          </div>
+          <ul id="keys-legend" class="keys-legend"></ul>
+        </section>
+      </div>
+      <div class="pause-col pause-actions">
+        <button id="btn-map" class="btn big pause-btn" type="button">Mapa de la región<small>El mapa entero, de un vistazo</small></button>
+        <button id="btn-techs" class="btn big pause-btn" type="button">Investigaciones<small>Tecnologías y eras</small></button>
+        <button id="btn-market" class="btn big pause-btn" type="button">Mercado<small>Cambia grano por bronce</small></button>
+        <button id="btn-help" class="btn big pause-btn" type="button">Cómo se juega<small>Las reglas, de principio a fin</small></button>
+        <button id="btn-menu" class="btn big pause-btn" type="button">Nueva partida<small>Vuelve a la pantalla de inicio</small></button>
+        <button id="btn-end" class="btn primary big pause-btn" type="button">Fin del día<small>Pasa el turno al rival</small></button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ============ Campaña ============ -->
+  <dialog id="campaign" class="modal wide">
+    <header class="modal-head">
+      <span class="brand-mark big" aria-hidden="true">Ω</span>
+      <div>
+        <h2>La Ilíada</h2>
+        <p class="muted">Seis capítulos encadenados. Tus héroes conservan sus cintas de un capítulo al siguiente.</p>
+      </div>
+      <button class="btn ghost icon close" type="button" data-close title="Cerrar">✕</button>
+    </header>
+    <div class="campaign-grid">
+      <div id="chapter-list" class="chapter-list"></div>
+      <div id="briefing" class="briefing"></div>
+    </div>
+    <footer class="modal-foot">
+      <button id="btn-campaign-reset" class="btn ghost" type="button">Empezar de cero</button>
+      <button id="btn-chapter" class="btn primary big" type="button">Jugar capítulo</button>
+    </footer>
+  </dialog>
+
+  <!-- ============ Tecnologías ============ -->
+  <dialog id="techs" class="modal wide">
+    <header class="modal-head">
+      <div>
+        <h2>Tecnologías y eras</h2>
+        <p class="muted">Una investigación y un avance de era por turno, desde tu campamento.</p>
+      </div>
+      <button class="btn ghost icon close" type="button" data-close title="Cerrar">✕</button>
+    </header>
+    <div id="era-box" class="era-box"></div>
+    <div id="tech-list" class="tech-list"></div>
+  </dialog>
+
+  <!-- ============ Mercado ============ -->
+  <dialog id="market" class="modal narrow">
+    <header class="modal-head">
+      <div>
+        <h2>Mercado</h2>
+        <p class="muted">Cambia excedentes en tu turno. El Comercio Marítimo y los gremios mejoran el cambio.</p>
+      </div>
+      <button class="btn ghost icon close" type="button" data-close title="Cerrar">✕</button>
+    </header>
+    <div id="market-body" class="market-body"></div>
+  </dialog>
+
+  <!-- ============ Ayuda ============ -->
+  <dialog id="help" class="modal wide">
+    <header class="modal-head">
+      <div>
+        <h2>Cómo se juega</h2>
+        <p class="muted">Diez años de guerra, en unos cuantos turnos.</p>
+      </div>
+      <button class="btn ghost icon close" type="button" data-close title="Cerrar">✕</button>
+    </header>
+    <div class="help-grid">
+      <section>
+        <h3>Tu turno</h3>
+        <ol>
+          <li><b>Toca una unidad</b>: en azul ves adónde puede ir y en rojo, a quién puede atacar.</li>
+          <li><b>Toca una casilla azul</b> para moverla: al llegar salta su <b>menú de órdenes</b> (Atacar, Construir, Curar, Esperar, Regresar…). Tócala otra vez sin moverla para abrirlo ahí mismo.</li>
+          <li>Atajo: toca un enemigo en rojo y tu unidad se acerca y ataca de una vez. Pasa el cursor antes para ver el <b>pronóstico exacto</b>.</li>
+          <li><kbd>Esc</kbd> o clic derecho: vuelve atrás (del objetivo al menú, del menú a <b>Regresar</b>). Las teclas <kbd>1</kbd>–<kbd>9</kbd> eligen en el menú.</li>
+          <li>Toca un <b>edificio</b> tuyo y salta su menú: entrenar (una unidad por edificio y turno), tecnologías, mercado…</li>
+          <li>Todo está en el <b>Menú del día</b>: objetivos, investigaciones, mercado y el <b>Fin del día</b>. <kbd>N</kbd> salta a la siguiente unidad libre.</li>
+        </ol>
+        <h3>Con el mando</h3>
+        <p class="muted small">Se juega entero con teclas. Elige el esquema antes de empezar o en el Menú del día.</p>
+        <ul id="help-keys"></ul>
+      </section>
+      <section>
+        <h3>Combate</h3>
+        <ul>
+          <li>El daño depende de ataque contra defensa, y <b>el ataque baja con la vida</b>: quien golpea primero suele ganar.</li>
+          <li>El defensor contraataca si tú estás a su alcance. Un arquero a 3 casillas no recibe respuesta de la infantería.</li>
+          <li><b>Lanceros</b> golpean primero y +83% contra carros. <b>Honderos</b> golpean primero si los atacan cuerpo a cuerpo.</li>
+          <li>Colinas y montañas dan defensa y +1 de alcance; el río y la playa dejan vendido al defensor.</li>
+          <li>Cada 3 combates, una unidad gana una <b>cinta</b> (+15% ataque y defensa, máximo 3).</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Economía y eras</h3>
+        <ul>
+          <li>Los <b>Colonos</b> construyen <b>en la casilla donde están parados</b>: llévalo encima del trigal, del yacimiento o del hueco y ahí levanta el edificio.</li>
+          <li><b>Trigales y molinos</b>: en las llanuras hay trigales. Sobre uno se levanta un <b>Molino</b> (+20 de grano), y pegadas a él caben hasta <b>4 Granjas</b>, una por lado (+28 cada una). Si a ese lado le estorba un camino, una montaña o el mar, ese hueco se pierde.</li>
+          <li><b>Bronce</b>: los yacimientos salen siempre en colina o montaña y encima va la <b>Mina</b> (+50). Ni el trigo ni el bronce se agotan: si te tiran el molino o la mina, el yacimiento sigue ahí.</li>
+          <li>La ciudad crece alrededor del campamento, como en el original: los edificios militares y el templo van <b>pegados al campamento</b> (4 huecos) y las torres en sus <b>esquinas</b>. ¿Sin sitio? Funda otro campamento a 4+ casillas.</li>
+          <li><b>Población</b>: el ejército que puedes mantener depende de tus ingresos (8 + ingresos/22, máx. 40). Más granjas y minas, más tropas.</li>
+          <li>Para <b>avanzar de era</b> necesitas recursos y además 2, 4 o 5 tecnologías de tu era actual. Tus unidades mejoran solas (Recluta → Hoplita → Hoplita de Élite…).</li>
+          <li><b>Mercado</b> (en el campamento): cambia grano por bronce y, desde la era 2, contrata un Mercenario Tracio por turno.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Héroes</h3>
+        <ul>
+          <li><b>Aquiles</b>: +33% ataque a los aliados que le ven; Ira (30 de daño a un vecino).</li>
+          <li><b>Odiseo</b>: −15% defensa a los enemigos que ve; golpea primero; +100 bronce en el campamento.</li>
+          <li><b>Héctor</b>: +20% defensa a los aliados que le ven, +25% ataque a sus vecinos; cura en área.</li>
+          <li><b>Paris</b>: +33% ataque a los arqueros aliados; Flecha del Talón contra héroes.</li>
+          <li>Si un héroe cae, vuelve desde el campamento 2 turnos después.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Tesoros del mapa</h3>
+        <ul>
+          <li><b>Cabras</b> (+120 de grano) y <b>bolsas de bronce</b> (+100): termina el movimiento encima.</li>
+          <li><b>Ruinas</b>: grano, bronce, mercenarios, una tecnología gratis… o una trampa.</li>
+          <li><b>Reliquias</b>: solo un Sacerdote puede cargarlas. Llévala junto a un Templo tuyo y ofréndala: +25 de bronce cada turno. Si el sacerdote cae, la suelta.</li>
+          <li>Los <b>sacerdotes</b> curan, inspiran y pueden <b>convertir</b> a enemigos vecinos (más fácil si están heridos).</li>
+          <li>Una unidad herida se <b>cura sola</b> al empezar tu turno si está parada <b>encima de cualquier edificio tuyo</b>: +20 en el Campamento y +15 en los demás, hasta en una granja. El <b>Templo</b> además cura a los que tiene pegados en cruz. Las casillas donde se curaría salen marcadas con una cruz verde.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Victoria</h3>
+        <ul>
+          <li>Destruye todos los <b>Campamentos</b> enemigos (o la <b>Ciudadela</b> en el Asedio). Un colono puede fundar un campamento sobre las <b>ruinas</b> de uno enemigo y capturar sus edificios cercanos.</li>
+          <li>Era 4: la <b>Maravilla</b> (Templo de Atenea) tarda 3 turnos. Si resiste en pie 8 turnos tuyos, ganas; al terminarla, tu rival recibe refuerzos.</li>
+          <li>En los puentes no hay cobertura: flechas y piedras hacen mucho más daño.</li>
+          <li><b>Asedio de Troya</b>: la muralla solo cae de verdad con arietes y catapultas. Las torres de asedio suben a tu infantería al muro. Los troyanos ganan saliendo a romper el cerco y arrasando el campamento de la playa.</li>
+          <li>En la era 4, los aqueos pueden construir el <b>Caballo de Troya</b>: pégalo a la muralla y suelta a tres guerreros dentro.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Aldeas y zona de control</h3>
+        <ul>
+          <li>Las <b>Aldeas</b> de la Tróade son neutrales: cualquier unidad de tierra que <b>termine su movimiento encima</b> se queda con ellas y con sus ingresos. También se le pueden quitar al enemigo igual.</li>
+          <li><b>Zona de control</b>: si entras en una casilla pegada a un enemigo armado, tu movimiento se detiene ahí. No se puede cruzar un ejército de largo. Los <b>Carros Exploradores</b> la ignoran.</li>
+          <li>Las <b>catapultas</b> se montan y se desmontan: montadas disparan a 4 casillas pero no se mueven; desmontadas se mueven pero no disparan. Cada cambio cuesta el turno.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>El mar</h3>
+        <ul>
+          <li>El <b>Puerto</b> se construye en la arena pegada al mar y bota naves.</li>
+          <li>La <b>Nave de Transporte</b> carga 3 unidades de tierra: pon la tropa al lado y elige <b>Embarcar</b>. Para bajarla, selecciona la nave y usa <b>Desembarcar</b> en una casilla de costa.</li>
+          <li>La <b>Nave de Guerra</b> dispara a 3 casillas y cubre el desembarco. Si una nave se hunde, se hunde con todo lo que lleve dentro.</li>
+          <li>Las naves solo navegan: ni pisan tierra ni cruzan los puentes.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Casas y campaña</h3>
+        <ul>
+          <li>Al empezar eliges una <b>casa</b>: Micenas, Esparta o Ftía entre los aqueos; Dardania, Licia o las Amazonas entre los troyanos. Cada una da un bono propio y una <b>unidad única</b> que solo ella entrena.</li>
+          <li>La <b>Campaña</b> son seis capítulos de la Ilíada, cada uno con su objetivo: desembarcar, tomar aldeas, aguantar sin Aquiles, cruzar en barco, matar a Héctor y, al final, el caballo.</li>
+          <li>Tus héroes <b>conservan sus cintas</b> de un capítulo al siguiente, así que cuidarlos compensa.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Controles</h3>
+        <ul>
+          <li>Arrastra para mover el mapa, rueda o pellizco para zoom, <kbd>WASD</kbd> o flechas.</li>
+          <li>Clic en el minimapa para saltar a otra zona.</li>
+          <li><kbd>T</kbd> tecnologías · <kbd>M</kbd> mercado · <kbd>Espacio</kbd> esperar.</li>
+        </ul>
+      </section>
+    </div>
+  </dialog>
+
+  <!-- ============ Fin de partida ============ -->
+  <dialog id="gameover" class="modal narrow">
+    <div id="gameover-body"></div>
+    <footer class="modal-foot">
+      <button id="btn-view" class="btn ghost" type="button">Ver el mapa</button>
+      <button id="btn-rematch" class="btn ghost" type="button">Revancha</button>
+      <button id="btn-new" class="btn ghost" type="button">Nueva partida</button>
+      <button id="btn-next" class="btn primary" type="button" hidden>Siguiente capítulo</button>
+    </footer>
+  </dialog>
+
+  <div id="handoff" class="handoff" hidden>
+    <div class="handoff-card">
+      <p class="muted">Pasa el dispositivo a</p>
+      <h2 id="handoff-name">Troyanos</h2>
+      <button id="btn-handoff" class="btn primary big" type="button">Empezar mi turno</button>
+      <p id="handoff-keys" class="muted small"></p>
+    </div>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
